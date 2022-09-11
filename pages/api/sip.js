@@ -15,7 +15,6 @@ export default async function handler(req, res) {
 				author,
 				implementor,
 				release,
-				discussion,
 				proposal,
 				implementationDate,
 				SIPNumbers,
@@ -41,9 +40,9 @@ export default async function handler(req, res) {
 
 			//	consturcting body:
 			const header = `
-| SIP     | Title		 | Network  | Status 	| Type			| Author			| Implementor				| Release	  		| Implementation Date   | Discussions To	| Proposal		| Created					| Requires		|
-| ---     | ---      | ---			| ---			| ---				| ---					| ---								| --- 					| ---										| ---							| ---	      	| ---							| ---					|
-| ${sip}  | ${title} |${network}| Draft		| ${type}   | ${authorStr}| ${implementorStr} | ${release}		| ${implementationDate}	| ${discussion}		| ${proposal ?? '-'} |	${createdDate} 	| ${requires} |
+| SIP     | Title		 | Network  | Status 	| Type			| Author			| Implementor				| Release	  		| Implementation Date   |  Proposal		| Created					| Requires		|
+| ---     | ---      | ---			| ---			| ---				| ---					| ---								| --- 					| ---										|  ---	      	| ---							| ---					|
+| ${sip}  | ${title} |${network}| Draft		| ${type}   | ${authorStr}| ${implementorStr} | ${release}		| ${implementationDate}	|  ${proposal ?? '-'} |	${createdDate} 	| ${requires} |
 `;
 
 			const PRtitle = `Create SIP-${sip}.md`;

@@ -13,7 +13,6 @@ export default async function handler(req, res) {
 				title,
 				network,
 				author,
-				discussion,
 				SCCPNumbers,
 				createdDate,
 				updatedDate,
@@ -22,12 +21,7 @@ export default async function handler(req, res) {
 				motivation,
 				copyright,
 			} = req.body;
-			if (
-				title == null ||
-				username == null ||
-				author == null ||
-				discussion == null
-			) {
+			if (title == null || username == null || author == null) {
 				throw "Invaid Fields";
 			}
 
@@ -38,9 +32,9 @@ export default async function handler(req, res) {
 
 			//	consturcting body:
 			const header = `
-| SCCP     | Title		| Network   | Status 	| Author      | Discussions To	| Created				 | Updated 				| Requires		|
-| ---      | ---      	| ---     | ---			| ---         | ---							| ---						 | --- 		 				| ---					|
-| ${sccp}  | ${title} |${network} | Draft		| ${authorStr}| ${discussion}		|	${createdDate} | ${updatedDate} | ${requires} |
+| SCCP     | Title		| Network   | Status 	| Author      | Created				 | Updated 				| Requires		|
+| ---      | ---      	| ---     | ---			| ---         | ---						 | --- 		 				| ---					|
+| ${sccp}  | ${title} |${network} | Draft		| ${authorStr}| ${createdDate} | ${updatedDate} | ${requires} |
 `;
 
 			const PRtitle = `Create SCCP-${sccp}.md`;

@@ -146,18 +146,16 @@ function RenderSipForm({ username, access_token }) {
 	];
 
 	const schema = Joi.object({
-		abstract: Joi.string().required().max(200),
+		abstract: Joi.string().required().max(1000),
 		author: Joi.array()
 			.items(Joi.string().required().max(50))
 			.required()
 			.min(1),
 		configurableValues: Joi.string().required().max(200),
 		createdDate: Joi.date().required(),
-		discussion: Joi.string().required().max(200),
-		implementationDate: Joi.date().required(),
+		implementationDate: Joi.date(),
 		implementor: Joi.array()
 			.items(Joi.string().required().max(50))
-			.required()
 			.min(1),
 		overview: Joi.string().required().max(200),
 		proposal: Joi.string().max(200),
@@ -281,7 +279,7 @@ function RenderSipForm({ username, access_token }) {
 			/>
 
 			<CustomInput
-				label="Implementor(s)*"
+				label="Implementor(s)"
 				name="implementor"
 				setValue={setInput}
 				value={input}
@@ -289,7 +287,7 @@ function RenderSipForm({ username, access_token }) {
 			/>
 
 			<DateInput
-				label="Implementation Date*"
+				label="Implementation Date"
 				name="implementationDate"
 				handleChange={handleChange}
 			/>
@@ -301,12 +299,6 @@ function RenderSipForm({ username, access_token }) {
 				label="Release name"
 			/>
 
-			<TextInput
-				name="discussion"
-				handleChange={handleChange}
-				placeholder="Thread on https://research.synthetix.io/"
-				label="Discussion Link*"
-			/>
 			<TextInput
 				name="proposal"
 				handleChange={handleChange}
@@ -387,14 +379,13 @@ function RenderSccpForm({ username, access_token }) {
 	];
 
 	const schema = Joi.object({
-		abstract: Joi.string().required().max(200),
+		abstract: Joi.string().required().max(1000),
 		author: Joi.array()
 			.items(Joi.string().required().max(50))
 			.required()
 			.min(1),
 		createdDate: Joi.date().required(),
-		discussion: Joi.string().required().max(200),
-		motivation: Joi.string().required().max(200),
+		motivation: Joi.string().max(200),
 		copyright: Joi.string(),
 		simpleSummary: Joi.string().required().max(200),
 		sccp: Joi.number().required(),
@@ -501,12 +492,6 @@ function RenderSccpForm({ username, access_token }) {
 				placeholder="Author name"
 			/>
 
-			<TextInput
-				handleChange={handleChange}
-				name="discussion"
-				placeholder="Thread on https://research.synthetix.io/"
-				label="Discussion Link*"
-			/>
 			<DateInput
 				handleChange={handleChange}
 				name="createdDate"
