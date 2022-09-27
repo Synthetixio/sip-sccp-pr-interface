@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import DateInput from "../components/form/date_selector";
 import DropdownSelector from "../components/form/dropdown_selector";
 import TextArea from "../components/form/text_area";
@@ -66,6 +66,20 @@ export default function CreatePr({
 	access_token,
 }) {
 	const [active, setActive] = React.useState("sip");
+
+	const [sccp, setSccp] = useState(0);
+	const [sip, setSip] = useState(0);
+
+	useEffect(() => {
+		fetch(`/api/next?access_token=${access_token}&opt=sccp`)
+			.then((res) => res.text())
+			.then((data) => setSccp(Number(data)));
+
+		fetch(`/api/next?access_token=${access_token}&opt=sip`)
+			.then((res) => res.text())
+			.then((data) => setSip(Number(data)));
+	}, [access_token]);
+
 	return (
 		<>
 			<Head>
@@ -101,6 +115,7 @@ export default function CreatePr({
 									<RenderSipForm
 										username={username}
 										access_token={access_token}
+										sip={sip}
 									/>
 								</Transition>
 
@@ -116,6 +131,7 @@ export default function CreatePr({
 									<RenderSccpForm
 										username={username}
 										access_token={access_token}
+										sccp={sccp}
 									/>
 								</Transition>
 							</div>
@@ -127,7 +143,7 @@ export default function CreatePr({
 	);
 }
 
-function RenderSipForm({ username, access_token }) {
+function RenderSipForm({ username, access_token, sip }) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -154,15 +170,13 @@ function RenderSipForm({ username, access_token }) {
 		configurableValues: Joi.string().required().max(200),
 		createdDate: Joi.date().required(),
 		implementationDate: Joi.date(),
-		implementor: Joi.array()
-			.items(Joi.string().required().max(50))
-			.min(1),
+		implementor: Joi.array().items(Joi.string().required().max(50)).min(1),
 		overview: Joi.string().required().max(200),
 		proposal: Joi.string().max(200),
 		rationale: Joi.string().required().max(200),
 		release: Joi.string().required().max(50),
 		simpleSummary: Joi.string().required().max(200),
-		sip: Joi.number().required(),
+		sip: Joi.number().required().default(String(sip)),
 		SIPNumbers: Joi.array().items(Joi.number()),
 		title: Joi.string().required().max(50),
 		username: Joi.string(),
@@ -201,7 +215,6 @@ function RenderSipForm({ username, access_token }) {
 	};
 
 	const handleSubmit = async (e) => {
-
 		e.preventDefault();
 		getLastValues();
 		//validating input
@@ -246,6 +259,7 @@ function RenderSipForm({ username, access_token }) {
 				handleChange={handleChange}
 				placeholder="SIP Number"
 				label="SIP"
+				defaultValue={sip}
 			/>
 
 			<TextInput
@@ -368,7 +382,7 @@ function RenderSipForm({ username, access_token }) {
 	);
 }
 
-function RenderSccpForm({ username, access_token }) {
+function RenderSccpForm({ username, access_token, sccp }) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -388,7 +402,7 @@ function RenderSccpForm({ username, access_token }) {
 		motivation: Joi.string().max(200),
 		copyright: Joi.string(),
 		simpleSummary: Joi.string().required().max(200),
-		sccp: Joi.number().required(),
+		sccp: Joi.number().required().default(String(sccp)),
 		username: Joi.string(),
 		SCCPNumbers: Joi.array().items(Joi.number()),
 		title: Joi.string().required().max(50),
@@ -470,6 +484,7 @@ function RenderSccpForm({ username, access_token }) {
 				name="sccp"
 				placeholder="SCCP Number"
 				label="SCCP*"
+				defaultValue={sccp}
 			/>
 			<TextInput
 				handleChange={handleChange}

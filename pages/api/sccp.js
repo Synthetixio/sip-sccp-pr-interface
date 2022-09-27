@@ -1,7 +1,6 @@
 import axios from "axios";
 
 export default async function handler(req, res) {
-	//  TODO update these with original
 	const repo = "SIPs";
 	const owner = "Synthetixio";
 	const baseBranch = "master";
