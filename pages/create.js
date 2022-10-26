@@ -162,27 +162,22 @@ function RenderSipForm({ username, access_token, sip }) {
 	];
 
 	const schema = Joi.object({
-		abstract: Joi.string().required().max(1000),
-		author: Joi.array()
-			.items(Joi.string().required().max(50))
-			.required()
-			.min(1),
-		configurableValues: Joi.string().required().max(200),
-		createdDate: Joi.date().required(),
-		implementationDate: Joi.date(),
-		implementor: Joi.array().items(Joi.string().required().max(50)).min(1),
-		overview: Joi.string().required().max(200),
-		proposal: Joi.string().max(200),
-		rationale: Joi.string().required().max(200),
-		release: Joi.string().required().max(50),
-		simpleSummary: Joi.string().required().max(200),
-		sip: Joi.number().required().default(String(sip)),
+		abstract: Joi.string().max(1000),
+		author: Joi.array().items(Joi.string().max(50)).min(1),
+		configurableValues: Joi.string(),
+		createdDate: Joi.date().default(Date.now()),
+		implementor: Joi.array().items(Joi.string().max(50)).min(1),
+		overview: Joi.string(),
+		proposal: Joi.string(),
+		rationale: Joi.string(),
+		simpleSummary: Joi.string(),
+		sip: Joi.number().default(String(sip)),
 		SIPNumbers: Joi.array().items(Joi.number()),
-		title: Joi.string().required().max(50),
+		title: Joi.string().required().max(100),
 		username: Joi.string(),
 		network: Joi.string().required(),
-		testCases: Joi.string().required().max(200),
-		type: Joi.string().required().max(50),
+		testCases: Joi.string(),
+		type: Joi.string().max(50),
 	});
 
 	const [input, setInput] = React.useState({
@@ -190,6 +185,7 @@ function RenderSipForm({ username, access_token, sip }) {
 		author: [],
 		SIPNumbers: [],
 		implementor: [],
+		sip: String(sip),
 	});
 
 	const handleChange = (e) => {
@@ -223,7 +219,6 @@ function RenderSipForm({ username, access_token, sip }) {
 			console.log(error);
 			alert(error);
 		} else {
-			console.log(input);
 			const res = await fetch(`/api/sip?access_token=${access_token}`, {
 				method: "POST",
 				headers: {
@@ -233,7 +228,6 @@ function RenderSipForm({ username, access_token, sip }) {
 			});
 			if (res.ok) {
 				const data = await res.json();
-				console.log(data);
 				alert("PR created successfully!");
 				window.open(data.data.html_url, "_blank");
 			} else {
@@ -241,6 +235,7 @@ function RenderSipForm({ username, access_token, sip }) {
 			}
 		}
 	};
+
 	return (
 		<form className="flex flex-wrap gap-5 flex-col">
 			<p className="text-[24px] mt-3 font-semibold font-inter text-white ">
@@ -300,19 +295,6 @@ function RenderSipForm({ username, access_token, sip }) {
 				placeholder="Implementor name"
 			/>
 
-			<DateInput
-				label="Implementation Date"
-				name="implementationDate"
-				handleChange={handleChange}
-			/>
-
-			<TextInput
-				name="release"
-				placeholder="Name of Release"
-				handleChange={handleChange}
-				label="Release name"
-			/>
-
 			<TextInput
 				name="proposal"
 				handleChange={handleChange}
@@ -323,6 +305,7 @@ function RenderSipForm({ username, access_token, sip }) {
 				name="createdDate"
 				handleChange={handleChange}
 				label="Created on*"
+				defaultVal
 			/>
 
 			<CustomInput
@@ -398,22 +381,23 @@ function RenderSccpForm({ username, access_token, sccp }) {
 			.items(Joi.string().required().max(50))
 			.required()
 			.min(1),
-		createdDate: Joi.date().required(),
-		motivation: Joi.string().max(200),
+		createdDate: Joi.date(),
+		motivation: Joi.string(),
 		copyright: Joi.string(),
-		simpleSummary: Joi.string().required().max(200),
+		simpleSummary: Joi.string().required(),
 		sccp: Joi.number().required().default(String(sccp)),
 		username: Joi.string(),
 		SCCPNumbers: Joi.array().items(Joi.number()),
-		title: Joi.string().required().max(50),
+		title: Joi.string().required().max(100),
 		network: Joi.string().required().max(50),
-		updatedDate: Joi.date().required(),
 	});
 
 	const [input, setInput] = React.useState({
 		username: username ?? "fallback",
 		author: [],
 		SCCPNumbers: [],
+		sccp,
+		createdDate: new Date(),
 	});
 
 	const handleChange = (e) => {
@@ -461,6 +445,8 @@ function RenderSccpForm({ username, access_token, sccp }) {
 				alert("PR created successfully!");
 				window.open(data.data.html_url, "_blank");
 			} else {
+				const data = await res.json();
+				console.log(res, data);
 				alert("something went wrong! Please try again.");
 			}
 		}
@@ -511,11 +497,7 @@ function RenderSccpForm({ username, access_token, sccp }) {
 				handleChange={handleChange}
 				name="createdDate"
 				label="Created on*"
-			/>
-			<DateInput
-				name="updatedDate"
-				handleChange={handleChange}
-				label="Updated on"
+				defaultVal
 			/>
 
 			<CustomInput

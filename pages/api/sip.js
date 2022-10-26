@@ -2,8 +2,11 @@ import axios from "axios";
 
 export default async function handler(req, res) {
 	const repo = "SIPs";
+	// const repo = "typescript";
 	const owner = "Synthetixio";
+	// const owner = "nikhilswain";
 	const baseBranch = "master";
+	// const baseBranch = "main";
 	if (req.method === "POST") {
 		try {
 			const {
@@ -14,9 +17,6 @@ export default async function handler(req, res) {
 				type,
 				author,
 				implementor,
-				release,
-				proposal,
-				implementationDate,
 				SIPNumbers,
 				createdDate,
 				// additional fields
@@ -38,11 +38,17 @@ export default async function handler(req, res) {
 			const requires =
 				typeof SIPNumbers === "string" ? SIPNumbers : SIPNumbers?.join(", ");
 
-			//	consturcting body:
-			const header = `
-| SIP     | Title		 | Network  | Status 	| Type			| Author			| Implementor				| Release	  		| Implementation Date   |  Proposal		| Created					| Requires		|
-| ---     | ---      | ---			| ---			| ---				| ---					| ---								| --- 					| ---										|  ---	      	| ---							| ---					|
-| ${sip}  | ${title} |${network}| Draft		| ${type}   | ${authorStr}| ${implementorStr} | ${release}		| ${implementationDate}	|  ${proposal ?? '-'} |	${createdDate} 	| ${requires} |
+			const header = `---
+sip: ${sip}
+title: ${title}
+network: ${network}
+status: Draft
+type: ${type}
+author: ${authorStr}
+implementor: ${implementorStr}
+created: ${createdDate.split(" ")[0]}
+requires: ${requires}
+---
 `;
 
 			const PRtitle = `Create SIP-${sip}.md`;
@@ -102,11 +108,11 @@ ${configurableValues}
 					"Content-Type": "application/json",
 					Accept: "application/vnd.github+json",
 				},
+			}).catch((err) => {
+				console.log(err?.response?.data);
 			});
 
 			//?	creata a branch in forked repo
-			let newBranchData = {};
-
 			const newBranchAlready = await axios({
 				method: "get",
 				url: `https://api.github.com/repos/${username}/${repo}/git/refs/heads/${branchName}`,
@@ -117,7 +123,12 @@ ${configurableValues}
 					Accept: "application/vnd.github+json",
 				},
 				validateStatus: () => true,
+			}).catch((err) => {
+				console.log(err?.response?.data);
 			});
+
+			let newBranchData = {};
+
 			//	check if branch already exists.
 			if (newBranchAlready?.status !== 200) {
 				//	get main branch "sha" hash
@@ -125,11 +136,12 @@ ${configurableValues}
 					method: "get",
 					url: `https://api.github.com/repos/${username}/${repo}/git/refs/heads/${baseBranch}`,
 					headers: {
-						Authorization:
-							"token " + (req.headers?.authorization ?? req.query.access_token),
+						Authorization: "token " + req.query.access_token,
 						"Content-Type": "application/json",
 						Accept: "application/vnd.github+json",
 					},
+				}).catch((err) => {
+					console.log(err?.response?.data);
 				});
 
 				const baseBranchHash = branchRes.data.object.sha;
@@ -138,8 +150,7 @@ ${configurableValues}
 					method: "post",
 					url: `https://api.github.com/repos/${username}/${repo}/git/refs`,
 					headers: {
-						Authorization:
-							"token " + (req.headers?.authorization ?? req.query.access_token),
+						Authorization: "token " + req.query.access_token,
 						Accept: "application/vnd.github+json",
 					},
 					data: {
@@ -187,8 +198,9 @@ ${configurableValues}
 			});
 
 			res.json({ message: "success", data: ghRes.data });
+			// res.json({ message: "success", data: "ok" });
 		} catch (error) {
-			console.log({ error });
+			console.log(error?.response?.data ?? error);
 			res.status(400).send("something went wrong!");
 		}
 	} else {
