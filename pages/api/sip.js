@@ -1,4 +1,53 @@
 import axios from "axios";
+import * as cheerio from "cheerio";
+
+//	get all b64 of imgs from html string "file"
+const getImages = async ({ file, id }) => {
+	const $ = cheerio.load(file);
+	const imgs = $("img");
+	const images = [];
+	for (let i = 0; i < imgs.length; i++) {
+		const img = imgs[i];
+		const src = img.attribs.src;
+		const randomName = Math.random().toString(36).substring(7);
+		const ext = src.split(";")[0].split("/")[1];
+		const name = `${randomName}.${ext}`;
+		const b64 = src.split(",")[1];
+		//	replace img src with new name and path
+		$(img).attr("src", `./assets/sip-${id}/${name}`);
+		images.push({ name, b64 });
+	}
+
+	return { images, updatedFile: $.html() };
+};
+
+// upload b64 of image to github
+const uploadImage = async ({
+	imageB64,
+	id,
+	imgName,
+	username,
+	repo,
+	branchName,
+	access_token,
+}) => {
+	const imageFilePath = `content/sips/assets/sip-${id}/${imgName}`;
+	const imageEndpoint = `https://api.github.com/repos/${username}/${repo}/contents/${imageFilePath}`;
+	const imageRes = await axios({
+		method: "put",
+		url: imageEndpoint,
+		headers: {
+			Authorization: "token " + access_token,
+			Accept: "application/vnd.github+json",
+		},
+		data: {
+			content: imageB64,
+			message: `upload image for SIP-${id}`,
+			branch: branchName,
+		},
+	});
+	return imageRes.data;
+};
 
 export default async function handler(req, res) {
 	const repo = "SIPs";
@@ -7,6 +56,7 @@ export default async function handler(req, res) {
 	// const owner = "nikhilswain";
 	const baseBranch = "master";
 	// const baseBranch = "main";
+
 	if (req.method === "POST") {
 		try {
 			const {
@@ -46,10 +96,13 @@ status: Draft
 type: ${type}
 author: ${authorStr}
 implementor: ${implementorStr}
-created: ${createdDate.split(" ")[0]}
+created: ${
+				createdDate != null
+					? createdDate.split(" ")[0]
+					: new Date().toISOString().split("T")[0]
+			}
 requires: ${requires}
----
-`;
+---`;
 
 			const PRtitle = `Create SIP-${sip}.md`;
 			const branchName = PRtitle.replaceAll(" ", "-");
@@ -66,8 +119,7 @@ Your Github username or email address is listed in the 'author' header of all af
 If matching on email address, the email address is the one publicly listed on your GitHub profile.
 `;
 
-			const file = `${header}
-
+			const file = `
 # Simple Summary
 
 ${simpleSummary}
@@ -164,7 +216,34 @@ ${configurableValues}
 				newBranchData = newBranchAlready.data;
 			}
 
-			//? create a file in that branch
+			//? 		UPLOAD ALL IMAGES TO GITHUB AND REPLACE WITH URLS
+
+			const { images, updatedFile } = await getImages({ file, id: sip });
+
+			//	upload imgs to github
+			await Promise.all(
+				images.map((img) =>
+					uploadImage({
+						imageB64: img.b64,
+						imgName: img.name,
+						id: sip,
+						username,
+						repo,
+						branchName: branchName,
+						access_token: req.query.access_token,
+					})
+				)
+			);
+
+			// get content of body tag from updatedFile
+			const bodyContent = updatedFile
+				.split("<body>")[1]
+				.split("</body>")[0]
+				.trim();
+
+			const fullFile = `${header}\n\n${bodyContent}`;
+
+			//? create that MARKDOWN file in that branchfilePath
 			await axios({
 				method: "put",
 				url: `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`,
@@ -175,7 +254,7 @@ ${configurableValues}
 				},
 				data: {
 					message: "adding appropriate file",
-					content: Buffer.from(file).toString("base64"),
+					content: Buffer.from(fullFile).toString("base64"),
 					branch: branchName,
 				},
 			});
@@ -198,12 +277,20 @@ ${configurableValues}
 			});
 
 			res.json({ message: "success", data: ghRes.data });
-			// res.json({ message: "success", data: "ok" });
 		} catch (error) {
-			console.log(error?.response?.data ?? error);
+			// console.log(error?.response?.data ?? error);
+			console.log(error?.response ?? error);
 			res.status(400).send("something went wrong!");
 		}
 	} else {
 		res.status(404).send();
 	}
 }
+
+export const config = {
+	api: {
+		bodyParser: {
+			sizeLimit: "5mb",
+		},
+	},
+};

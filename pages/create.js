@@ -11,6 +11,7 @@ import CustomInput from "../components/form/custom_input";
 import Joi from "joi";
 import axios from "axios";
 import Head from "next/head";
+import Loading from "../components/loading";
 
 export async function getServerSideProps(context) {
 	try {
@@ -66,6 +67,7 @@ export default function CreatePr({
 	access_token,
 }) {
 	const [active, setActive] = React.useState("sip");
+	const [loading, setLoading] = useState(false);
 
 	const [sccp, setSccp] = useState(0);
 	const [sip, setSip] = useState(0);
@@ -116,6 +118,7 @@ export default function CreatePr({
 										username={username}
 										access_token={access_token}
 										sip={sip}
+										setLoading={setLoading}
 									/>
 								</Transition>
 
@@ -132,6 +135,7 @@ export default function CreatePr({
 										username={username}
 										access_token={access_token}
 										sccp={sccp}
+										setLoading={setLoading}
 									/>
 								</Transition>
 							</div>
@@ -139,11 +143,12 @@ export default function CreatePr({
 					</div>
 				</div>
 			</div>
+			{loading && <Loading />}
 		</>
 	);
 }
 
-function RenderSipForm({ username, access_token, sip }) {
+function RenderSipForm({ username, access_token, sip, setLoading }) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -162,7 +167,7 @@ function RenderSipForm({ username, access_token, sip }) {
 	];
 
 	const schema = Joi.object({
-		abstract: Joi.string().max(1000),
+		abstract: Joi.string(),
 		author: Joi.array().items(Joi.string().max(50)).min(1),
 		configurableValues: Joi.string(),
 		createdDate: Joi.date().default(Date.now()),
@@ -195,6 +200,12 @@ function RenderSipForm({ username, access_token, sip }) {
 		});
 	};
 
+	const handleEditorChange = (e) => {
+		setInput({
+			...input,
+			[e.target.name]: e.target.value,
+		});
+	};
 	const getLastValues = () => {
 		//getting all the values from the input that starts with temp
 		const tempValues = Object.keys(input).filter((key) =>
@@ -211,28 +222,37 @@ function RenderSipForm({ username, access_token, sip }) {
 	};
 
 	const handleSubmit = async (e) => {
-		e.preventDefault();
-		getLastValues();
-		//validating input
-		const { error } = schema.validate(input);
-		if (error) {
-			console.log(error);
-			alert(error);
-		} else {
-			const res = await fetch(`/api/sip?access_token=${access_token}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(input),
-			});
-			if (res.ok) {
-				const data = await res.json();
-				alert("PR created successfully!");
-				window.open(data.data.html_url, "_blank");
+		try {
+			e.preventDefault();
+			setLoading(true);
+			getLastValues();
+			//validating input
+			const { error } = schema.validate(input);
+			if (error) {
+				console.log(error);
+				alert(error);
+				setLoading(false);
 			} else {
-				alert("something went wrong! Please try again.");
+				const res = await fetch(`/api/sip?access_token=${access_token}`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(input),
+				});
+				if (res.ok) {
+					const data = await res.json();
+					alert("PR created successfully!");
+					setLoading(false);
+					window.open(data.data.html_url, "_blank");
+				} else {
+					alert("something went wrong! Please try again.");
+					setLoading(false);
+				}
 			}
+		} catch (error) {
+			console.log(error);
+			setLoading(false);
 		}
 	};
 
@@ -319,41 +339,41 @@ function RenderSipForm({ username, access_token, sip }) {
 			<TextArea
 				rows={5}
 				name="simpleSummary"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				placeholder="If you can't explain it simply, you don't understand it well enough. Simply describe the outcome the proposed change intends to achieve. This should be non-technical and accessible to a casual community member"
 				label="Simple summary*"
 			/>
 			<TextArea
 				label="Abstract*"
 				name="abstract"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				rows={8}
 				placeholder="A short (~200 words) description of the proposed change, the abstract should clearly describe the proposed change. This is what will be done if the SIP is implemented, not why it should be done or how it will be done. If the SIP proposes deploying a new contract, write, 'we propose to deploy a new contract that will do x'"
 			/>
 			<TextArea
 				name="overview"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				label="Overview*"
 				rows={3}
 				placeholder="This is a high level overview of how the SIP will solve the problem. The overview should clearly describe how the new feature will be implemented"
 			/>
 			<TextArea
 				name="rationale"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				label="Rationale*"
 				rows={10}
 				placeholder="This is where you explain the reasoning behind how you propose to solve the problem. Why did you propose to implement the change in this way, what were the considerations and trade-offs. The rationale fleshes out what motivated the design and why particular design decisions were made. It should describe alternate designs that were considered and related work. The rationale may also provide evidence of consensus within the community, and should discuss important objections or concerns raised during discussion"
 			/>
 			<TextArea
 				name="testCases"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				label="Test Cases*"
 				placeholder="Test cases for an implementation are mandatory for SIPs but can be included with the implementation"
 				rows={3}
 			/>
 			<TextArea
 				name="configurableValues"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				label="Configurable Values*"
 				rows={3}
 				placeholder="Please list all values configurable via SCCP under this implementation"
@@ -365,7 +385,7 @@ function RenderSipForm({ username, access_token, sip }) {
 	);
 }
 
-function RenderSccpForm({ username, access_token, sccp }) {
+function RenderSccpForm({ username, access_token, sccp, setLoading }) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -376,7 +396,7 @@ function RenderSccpForm({ username, access_token, sccp }) {
 	];
 
 	const schema = Joi.object({
-		abstract: Joi.string().required().max(1000),
+		abstract: Joi.string().required(),
 		author: Joi.array()
 			.items(Joi.string().required().max(50))
 			.required()
@@ -407,6 +427,13 @@ function RenderSccpForm({ username, access_token, sccp }) {
 		});
 	};
 
+	const handleEditorChange = (e) => {
+		setInput({
+			...input,
+			[e.target.name]: e.target.value,
+		});
+	};
+
 	const getLastValues = () => {
 		//getting all the values from the input that starts with temp
 		const tempValues = Object.keys(input).filter((key) =>
@@ -423,32 +450,45 @@ function RenderSccpForm({ username, access_token, sccp }) {
 	};
 
 	const handleSubmit = async (e) => {
-		e.preventDefault();
-		getLastValues();
+		try {
+			e.preventDefault();
+			setLoading(true);
+			getLastValues();
 
-		const { error } = schema.validate(input);
-		if (error) {
-			console.log(error);
-			alert(error);
-		} else {
-			console.log(input);
-			const res = await fetch(`/api/sccp?access_token=${access_token}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(input),
-			});
-			if (res.ok) {
-				const data = await res.json();
-				console.log(data);
-				alert("PR created successfully!");
-				window.open(data.data.html_url, "_blank");
+			const { error } = schema.validate(input);
+			if (error) {
+				console.log(error);
+				alert(error);
+				setLoading(false);
 			} else {
-				const data = await res.json();
-				console.log(res, data);
-				alert("something went wrong! Please try again.");
+				console.log(input);
+				const res = await fetch(`/api/sccp?access_token=${access_token}`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(input),
+				}).catch((err) => {
+					console.log(err);
+					alert(err.data?.message ?? "internal server error");
+					setLoading(false);
+				});
+				if (res.ok) {
+					const data = await res.json();
+					console.log(data);
+					alert("PR created successfully!");
+					setLoading(false);
+					window.open(data.data.html_url, "_blank");
+				} else {
+					const data = await res.json();
+					console.log(res, data);
+					alert("something went wrong! Please try again.");
+					setLoading(false);
+				}
 			}
+		} catch (error) {
+			console.log(error);
+			setLoading(false);
 		}
 	};
 
@@ -511,27 +551,27 @@ function RenderSccpForm({ username, access_token, sccp }) {
 			<TextArea
 				rows={5}
 				name="simpleSummary"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				placeholder="If you can't explain it simply, you don't understand it well enough. Simply describe the outcome the proposed change intends to achieve. This should be non-technical and accessible to a casual community member"
 				label="Simple summary*"
 			/>
 			<TextArea
 				label="Abstract*"
 				rows={8}
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				name="abstract"
 				placeholder="A short (~200 words) description of the proposed change, the abstract should clearly describe the proposed change. This is what will be done if the SCCP is implemented, not why it should be done or how it will be done. If the SCCP proposes deploying a new contract, write, 'we propose to deploy a new contract that will do x'"
 			/>
 			<TextArea
 				name="motivation"
 				label="Motivation*"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				rows={8}
 				placeholder="This is the problem statement. This is the why of the SCCP. It should clearly explain why the current state of the protocol is inadequate. It is critical that you explain why the change is needed, if the SCCP proposes changing how something is calculated, you must address why the current calculation is innaccurate or wrong. This is not the place to describe how the SCCP will address the issue!"
 			/>
 			<TextInput
 				name="copyright"
-				handleChange={handleChange}
+				handleChange={handleEditorChange}
 				label="Copyright"
 				placeholder="Copyright and related rights waived via [CC0](https://creativecommons.org/publicdo..."
 			/>

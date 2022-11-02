@@ -1,4 +1,52 @@
 import axios from "axios";
+import * as cheerio from "cheerio";
+
+//	get all b64 of imgs from html string "file"
+const getImages = async ({ file, id }) => {
+	const $ = cheerio.load(file);
+	const imgs = $("img");
+	const images = [];
+	for (let i = 0; i < imgs.length; i++) {
+		const img = imgs[i];
+		const src = img.attribs.src;
+		const randomName = Math.random().toString(36).substring(7);
+		const ext = src.split(";")[0].split("/")[1];
+		const name = `${randomName}.${ext}`;
+		const b64 = src.split(",")[1];
+		//	replace img src with new name and path
+		$(img).attr("src", `./assets/sccp-${id}/${name}`);
+		images.push({ name, b64 });
+	}
+	return { images, updatedFile: $.html() };
+};
+
+// upload b64 of image to github
+const uploadImage = async ({
+	imageB64,
+	id,
+	imgName,
+	username,
+	repo,
+	branchName,
+	access_token,
+}) => {
+	const imageFilePath = `content/sccp/assets/sccp-${id}/${imgName}`;
+	const imageEndpoint = `https://api.github.com/repos/${username}/${repo}/contents/${imageFilePath}`;
+	const imageRes = await axios({
+		method: "put",
+		url: imageEndpoint,
+		headers: {
+			Authorization: "token " + access_token,
+			Accept: "application/vnd.github+json",
+		},
+		data: {
+			content: imageB64,
+			message: `upload image for SIP-${id}`,
+			branch: branchName,
+		},
+	});
+	return imageRes.data;
+};
 
 export default async function handler(req, res) {
 	const repo = "SIPs";
@@ -58,8 +106,7 @@ Your Github username or email address is listed in the 'author' header of all af
 If matching on email address, the email address is the one publicly listed on your GitHub profile.
 `;
 
-			const file = `${header}
-
+			const file = `
 # Simple Summary
 
 ${simpleSummary}
@@ -143,6 +190,33 @@ ${copyright}
 				newBranchData = newBranchAlready.data;
 			}
 
+			//? 		UPLOAD ALL IMAGES TO GITHUB AND REPLACE WITH URLS
+
+			const { images, updatedFile } = await getImages({ file, id: sccp });
+
+			//	upload imgs to github
+			await Promise.all(
+				images.map((img) =>
+					uploadImage({
+						imageB64: img.b64,
+						imgName: img.name,
+						id: sccp,
+						username,
+						repo,
+						branchName: branchName,
+						access_token: req.query.access_token,
+					})
+				)
+			);
+
+			// get content of body tag from updatedFile
+			const bodyContent = updatedFile
+				.split("<body>")[1]
+				.split("</body>")[0]
+				.trim();
+
+			const fullFile = `${header}\n\n${bodyContent}`;
+
 			//? create a file in that branch
 			await axios({
 				method: "put",
@@ -154,7 +228,7 @@ ${copyright}
 				},
 				data: {
 					message: "adding appropriate file",
-					content: Buffer.from(file).toString("base64"),
+					content: Buffer.from(fullFile).toString("base64"),
 					branch: branchName,
 				},
 			});
