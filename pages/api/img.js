@@ -5,14 +5,8 @@ export default async function handler(req, res) {
 		if (req.method === "POST") {
 			const { branchName, opt, img, imgExt, username, repo, id } = req.body;
 
-			if (
-				branchName == null ||
-				username == null ||
-				repo == null ||
-				id == null
-			) {
+			if (branchName == null || username == null || repo == null || id == null)
 				throw "Invaid Fields: branchName, username, repo, id [any]";
-			}
 
 			let endpoint = "";
 			let filePath = "";
@@ -47,8 +41,6 @@ export default async function handler(req, res) {
 			});
 
 			if (ghRes.status >= 200 && ghRes.status < 300) {
-				console.log(ghRes.data.content.download_url);
-
 				const imageUrl = `../content/sccp/asset/sccp-52/snapshot-deviations.svg`;
 				res.send(imageUrl);
 			}
@@ -56,7 +48,7 @@ export default async function handler(req, res) {
 			res.status(404).send();
 		}
 	} catch (error) {
-		console.log(error);
-		res.status(400).send();
+		console.log(error?.response.data ?? error.response);
+		res.status(400).send(error?.response.data ?? error.response);
 	}
 }

@@ -50,12 +50,15 @@ const uploadImage = async ({
 };
 
 export default async function handler(req, res) {
-	const repo = "SIPs";
-	// const repo = "typescript";
-	const owner = "Synthetixio";
-	// const owner = "nikhilswain";
-	const baseBranch = "master";
-	// const baseBranch = "main";
+	// PROD
+	const repo = process.env.NEXT_PUBLIC_PROD_GITHUB_REPO_NAME;
+	const owner = process.env.NEXT_PUBLIC_PROD_GITHUB_ACCOUNT_NAME;
+	const baseBranch = process.env.NEXT_PUBLIC_PROD_GITHUB_BASE_BRANCH_NAME;
+
+	// DEV
+	// const repo = process.env.NEXT_PUBLIC_DEV_GITHUB_REPO_NAME;
+	// const owner = process.env.NEXT_PUBLIC_DEV_GITHUB_ACCOUNT_NAME;
+	// const baseBranch = process.env.NEXT_PUBLIC_DEV_GITHUB_BASE_BRANCH_NAME;
 
 	if (req.method === "POST") {
 		try {
@@ -78,7 +81,7 @@ export default async function handler(req, res) {
 				configurableValues,
 			} = req.body;
 			if (title == null || username == null) {
-				throw "Invaid Fields";
+				throw new Error("Invaid Fields");
 			}
 
 			const authorStr =
@@ -150,6 +153,7 @@ ${configurableValues}
 
 `;
 
+			console.log("Forking the repo");
 			//?	fork the repo
 			await axios({
 				method: "post",
@@ -179,9 +183,7 @@ ${configurableValues}
 				console.log(err?.response?.data);
 			});
 
-			let newBranchData = {};
-
-			//	check if branch already exists.
+			//?	check if branch already exists.
 			if (newBranchAlready?.status !== 200) {
 				//	get main branch "sha" hash
 				const branchRes = await axios({
@@ -192,13 +194,12 @@ ${configurableValues}
 						"Content-Type": "application/json",
 						Accept: "application/vnd.github+json",
 					},
-				}).catch((err) => {
-					console.log(err?.response?.data);
 				});
 
 				const baseBranchHash = branchRes.data.object.sha;
-				//	create new branch
-				const newBranchRes = await axios({
+
+				//?	create new branch
+				await axios({
 					method: "post",
 					url: `https://api.github.com/repos/${username}/${repo}/git/refs`,
 					headers: {
@@ -210,17 +211,14 @@ ${configurableValues}
 						sha: baseBranchHash,
 					},
 				});
-				newBranchData = newBranchRes.data;
 			} else {
 				console.log("branch already exists");
-				newBranchData = newBranchAlready.data;
 			}
 
-			//? 		UPLOAD ALL IMAGES TO GITHUB AND REPLACE WITH URLS
-
+			console.log("Uploading images to github");
+			//? UPLOAD ALL IMAGES TO GITHUB AND REPLACE WITH URLS
 			const { images, updatedFile } = await getImages({ file, id: sip });
 
-			//	upload imgs to github
 			await Promise.all(
 				images.map((img) =>
 					uploadImage({
@@ -243,22 +241,57 @@ ${configurableValues}
 
 			const fullFile = `${header}\n\n${bodyContent}`;
 
-			//? create that MARKDOWN file in that branchfilePath
-			await axios({
-				method: "put",
-				url: `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`,
+			console.log("Checking if file exists");
+			//? Check if the file already exists
+			const fileExists = await axios({
+				method: "get",
+				url: `https://api.github.com/repos/${username}/${repo}/contents/${filePath}?ref=${branchName}`,
 				headers: {
 					Authorization:
 						"token " + (req.headers?.authorization ?? req.query.access_token),
 					Accept: "application/vnd.github+json",
 				},
-				data: {
-					message: "adding appropriate file",
-					content: Buffer.from(fullFile).toString("base64"),
-					branch: branchName,
-				},
+				validateStatus: () => true,
 			});
 
+			if (fileExists.data.message !== "Not Found") {
+				console.log("file exists, updating...");
+				//? update that MARKDOWN file in that branchfilePath
+				await axios({
+					method: "put",
+					url: `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`,
+					headers: {
+						Authorization:
+							"token " + (req.headers?.authorization ?? req.query.access_token),
+						Accept: "application/vnd.github+json",
+					},
+					data: {
+						message: "updating appropriate file",
+						content: Buffer.from(fullFile).toString("base64"),
+						branch: branchName,
+						sha: fileExists.data.sha,
+					},
+				});
+			} else {
+				console.log("file does not exist, creating...");
+				//? create that MARKDOWN file in that branchfilePath
+				await axios({
+					method: "put",
+					url: `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`,
+					headers: {
+						Authorization:
+							"token " + (req.headers?.authorization ?? req.query.access_token),
+						Accept: "application/vnd.github+json",
+					},
+					data: {
+						message: "adding appropriate file",
+						content: Buffer.from(fullFile).toString("base64"),
+						branch: branchName,
+					},
+				});
+			}
+
+			console.log("creating a PR.");
 			//?	open PR for this change
 			const ghRes = await axios({
 				method: "post",
@@ -278,9 +311,12 @@ ${configurableValues}
 
 			res.json({ message: "success", data: ghRes.data });
 		} catch (error) {
-			// console.log(error?.response?.data ?? error);
-			console.log(error?.response ?? error);
-			res.status(400).send("something went wrong!");
+			console.log(error?.response?.data);
+			if (error?.response?.data?.errors?.[0]?.message)
+				return res.status(400).send(error?.response?.data?.errors?.[0]);
+			return res
+				.status(400)
+				.send(error?.response?.data ?? error?.response?.data.toString());
 		}
 	} else {
 		res.status(404).send();

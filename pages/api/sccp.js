@@ -49,12 +49,16 @@ const uploadImage = async ({
 };
 
 export default async function handler(req, res) {
-	const repo = "SIPs";
-	// const repo = "typescript";
-	const owner = "Synthetixio";
-	// const owner = "nikhilswain";
-	const baseBranch = "master";
-	// const baseBranch = "main";
+	// PROD
+	const repo = process.env.NEXT_PUBLIC_PROD_GITHUB_REPO_NAME;
+	const owner = process.env.NEXT_PUBLIC_PROD_GITHUB_ACCOUNT_NAME;
+	const baseBranch = process.env.NEXT_PUBLIC_PROD_GITHUB_BASE_BRANCH_NAME;
+
+	// DEV
+	// const repo = process.env.NEXT_PUBLIC_DEV_GITHUB_REPO_NAME;
+	// const owner = process.env.NEXT_PUBLIC_DEV_GITHUB_ACCOUNT_NAME;
+	// const baseBranch = process.env.NEXT_PUBLIC_DEV_GITHUB_BASE_BRANCH_NAME;
+
 	if (req.method === "POST") {
 		try {
 			const {
@@ -71,7 +75,7 @@ export default async function handler(req, res) {
 				copyright,
 			} = req.body;
 			if (title == null || username == null) {
-				throw "Invaid Fields";
+				throw new Error("Invaid Fields");
 			}
 
 			const authorStr =
@@ -150,9 +154,6 @@ ${copyright}
 				},
 				validateStatus: () => true,
 			});
-
-			//?	creata a branch in forked repo
-			let newBranchData = {};
 
 			//	check if branch already exists.
 			if (newBranchAlready?.status !== 200) {
@@ -252,8 +253,8 @@ ${copyright}
 
 			res.json({ message: "success", data: ghRes.data });
 		} catch (error) {
-			console.log({ error });
-			res.status(400).send("something went wrong!");
+			console.log(error?.response.data ?? error);
+			res.status(400).send(error?.response.data ?? error);
 		}
 	} else {
 		res.status(404).send();

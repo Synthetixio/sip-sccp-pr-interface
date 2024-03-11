@@ -12,6 +12,7 @@ import Joi from "joi";
 import axios from "axios";
 import Head from "next/head";
 import Loading from "../components/loading";
+import Popup from "reactjs-popup";
 
 export async function getServerSideProps(context) {
 	try {
@@ -72,6 +73,24 @@ export default function CreatePr({
 	const [sccp, setSccp] = useState(0);
 	const [sip, setSip] = useState(0);
 
+	const [message, setMessage] = useState({
+		show: false,
+		content: "",
+		url: null,
+	});
+
+	const closeModal = () => {
+		setMessage({ show: false, content: "", url: null });
+	};
+
+	const showMessage = (content, url = null) => {
+		setMessage({
+			show: true,
+			content: content?.toString()?.replace("ValidationError:", ""),
+			url,
+		});
+	};
+
 	useEffect(() => {
 		fetch(`/api/next?access_token=${access_token}&opt=sccp`)
 			.then((res) => res.text())
@@ -84,6 +103,35 @@ export default function CreatePr({
 
 	return (
 		<>
+			<Popup open={message.show} closeOnDocumentClick onClose={closeModal}>
+				<div
+					id="modalOverlay"
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 "
+				>
+					<div className="relative bg-white p-6 rounded shadow-md">
+						<p className="text-md font-semibold mb-2 text-0B0B22">
+							{message?.content}
+						</p>
+						<a
+							id="closeModal"
+							className="ml-auto text-md font-semibold text-red-600 cursor-pointer hover:bg-red-200 px-2 py-1 rounded-md"
+							onClick={closeModal}
+						>
+							Close
+						</a>
+						{message.url && (
+							<a
+								className="text-md font-semibold text-blue-600 cursor-pointer hover:bg-blue-200 px-2 py-1 rounded-md"
+								href={message.url}
+								target="_blank"
+								rel="noreferrer"
+							>
+								Open PR
+							</a>
+						)}
+					</div>
+				</div>
+			</Popup>
 			<Head>
 				<link rel="shortcut icon" href="/favicon.ico" />
 				<title>SIP / SCCP PR Interface</title>
@@ -117,8 +165,9 @@ export default function CreatePr({
 									<RenderSipForm
 										username={username}
 										access_token={access_token}
-										sip={sip}
+										sip={sip ?? 0}
 										setLoading={setLoading}
+										showMessage={showMessage}
 									/>
 								</Transition>
 
@@ -134,8 +183,9 @@ export default function CreatePr({
 									<RenderSccpForm
 										username={username}
 										access_token={access_token}
-										sccp={sccp}
+										sccp={sccp ?? 0}
 										setLoading={setLoading}
+										showMessage={showMessage}
 									/>
 								</Transition>
 							</div>
@@ -148,7 +198,13 @@ export default function CreatePr({
 	);
 }
 
-function RenderSipForm({ username, access_token, sip, setLoading }) {
+function RenderSipForm({
+	username,
+	access_token,
+	sip,
+	setLoading,
+	showMessage,
+}) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -166,6 +222,13 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 		},
 	];
 
+	useEffect(() => {
+		setInput((prev) => ({
+			...prev,
+			sip,
+		}));
+	}, [sip]);
+
 	const schema = Joi.object({
 		abstract: Joi.string(),
 		author: Joi.array().items(Joi.string().max(50)).min(1),
@@ -176,7 +239,7 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 		proposal: Joi.string(),
 		rationale: Joi.string(),
 		simpleSummary: Joi.string(),
-		sip: Joi.number().default(String(sip)),
+		sip: Joi.number().default(sip),
 		SIPNumbers: Joi.array().items(Joi.number()),
 		title: Joi.string().required().max(100),
 		username: Joi.string(),
@@ -190,22 +253,23 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 		author: [],
 		SIPNumbers: [],
 		implementor: [],
-		sip: String(sip),
+		sip,
 	});
 
 	const handleChange = (e) => {
-		setInput({
-			...input,
+		setInput((prev) => ({
+			...prev,
 			[e.target.name]: e.target.value,
-		});
+		}));
 	};
 
 	const handleEditorChange = (e) => {
-		setInput({
-			...input,
+		setInput((prev) => ({
+			...prev,
 			[e.target.name]: e.target.value,
-		});
+		}));
 	};
+
 	const getLastValues = () => {
 		//getting all the values from the input that starts with temp
 		const tempValues = Object.keys(input).filter((key) =>
@@ -230,7 +294,7 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 			const { error } = schema.validate(input);
 			if (error) {
 				console.log(error);
-				alert(error);
+				showMessage(error);
 				setLoading(false);
 			} else {
 				const res = await fetch(`/api/sip?access_token=${access_token}`, {
@@ -242,11 +306,13 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 				});
 				if (res.ok) {
 					const data = await res.json();
-					alert("PR created successfully!");
 					setLoading(false);
-					window.open(data.data.html_url, "_blank");
+					showMessage("PR created successfully!", data?.data?.html_url);
 				} else {
-					alert("something went wrong! Please try again.");
+					const data = await res.json();
+					showMessage(
+						data?.message ?? "something went wrong! Please try again."
+					);
 					setLoading(false);
 				}
 			}
@@ -385,7 +451,13 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 	);
 }
 
-function RenderSccpForm({ username, access_token, sccp, setLoading }) {
+function RenderSccpForm({
+	username,
+	access_token,
+	sccp,
+	setLoading,
+	showMessage,
+}) {
 	const options = [
 		{ value: "Ethereum", label: "Ethereum" },
 		{
@@ -449,6 +521,13 @@ function RenderSccpForm({ username, access_token, sccp, setLoading }) {
 		});
 	};
 
+	useEffect(() => {
+		setInput((prev) => ({
+			...prev,
+			sccp,
+		}));
+	}, [sccp]);
+
 	const handleSubmit = async (e) => {
 		try {
 			e.preventDefault();
@@ -457,11 +536,9 @@ function RenderSccpForm({ username, access_token, sccp, setLoading }) {
 
 			const { error } = schema.validate(input);
 			if (error) {
-				console.log(error);
-				alert(error);
+				showMessage(error);
 				setLoading(false);
 			} else {
-				console.log(input);
 				const res = await fetch(`/api/sccp?access_token=${access_token}`, {
 					method: "POST",
 					headers: {
@@ -470,19 +547,19 @@ function RenderSccpForm({ username, access_token, sccp, setLoading }) {
 					body: JSON.stringify(input),
 				}).catch((err) => {
 					console.log(err);
-					alert(err.data?.message ?? "internal server error");
+					showMessage(err.data?.message ?? "internal server error");
 					setLoading(false);
 				});
 				if (res.ok) {
 					const data = await res.json();
-					console.log(data);
-					alert("PR created successfully!");
+					showMessage("PR created successfully!");
 					setLoading(false);
 					window.open(data.data.html_url, "_blank");
 				} else {
 					const data = await res.json();
-					console.log(res, data);
-					alert("something went wrong! Please try again.");
+					showMessage(
+						data?.message ?? "something went wrong! Please try again."
+					);
 					setLoading(false);
 				}
 			}
