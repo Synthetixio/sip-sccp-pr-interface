@@ -12,7 +12,7 @@ import Joi from "joi";
 import axios from "axios";
 import Head from "next/head";
 import Loading from "../components/loading";
-import Popup from "reactjs-popup";
+import Popup from "../components/popup";
 
 export async function getServerSideProps(context) {
 	try {
