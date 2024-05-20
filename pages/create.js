@@ -155,7 +155,13 @@ function RenderSipForm({ username, access_token, sip, setLoading }) {
 			value: "Optimism",
 			label: "Optimism",
 		},
+		{ value: "Base", label: "Base" },
+		{ value: "Arbitrum", label: "Arbitrum" },
 		{ value: "Ethereum & Optimism", label: "Ethereum & Optimism" },
+		{ value: "Ethereum & Base", label: "Ethereum & Base" },
+		{ value: "Optimism & Base", label: "Optimism & Base" },
+		{ value: "Ethereum, Optimism & Base", label: "Ethereum, Optimism & Base" },
+		{ value: "Ethereum, Optimism, Base & Arbitrum", label: "Ethereum, Optimism, Base & Arbitrum" },
 	];
 	const options2 = [
 		{ value: "Meta-Governance", label: "Meta-Governance" },
@@ -392,7 +398,13 @@ function RenderSccpForm({ username, access_token, sccp, setLoading }) {
 			value: "Optimism",
 			label: "Optimism",
 		},
+		{ value: "Base", label: "Base" },
+		{ value: "Arbitrum", label: "Arbitrum" },
 		{ value: "Ethereum & Optimism", label: "Ethereum & Optimism" },
+		{ value: "Ethereum & Base", label: "Ethereum & Base" },
+		{ value: "Optimism & Base", label: "Optimism & Base" },
+		{ value: "Ethereum, Optimism & Base", label: "Ethereum, Optimism & Base" },
+		{ value: "Ethereum, Optimism, Base & Arbitrum", label: "Ethereum, Optimism, Base & Arbitrum" },
 	];
 
 	const schema = Joi.object({
